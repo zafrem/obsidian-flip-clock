@@ -1,0 +1,489 @@
+/* Flip Clock Plugin Styles */
+
+.flip-clock-container {
+	padding: 20px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+	background: var(--background-primary);
+}
+
+.flip-clock-main {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 30px;
+	width: 100%;
+}
+
+/* Mode Selector */
+.flip-clock-mode-selector {
+	display: flex;
+	gap: 10px;
+	margin-bottom: 10px;
+}
+
+.flip-clock-mode-selector button {
+	padding: 8px 20px;
+	border-radius: 6px;
+	background: var(--interactive-normal);
+	color: var(--text-normal);
+	border: 1px solid var(--background-modifier-border);
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.flip-clock-mode-selector button:hover {
+	background: var(--interactive-hover);
+}
+
+.flip-clock-mode-selector button:active {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+/* Flip Clock Display */
+.flip-clock-display {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 15px;
+	padding: 20px;
+	perspective: 1000px;
+	transform: none;
+	zoom: 1;
+}
+
+/* Digit Pair Container */
+.flip-digit-pair {
+	display: flex;
+	gap: 8px;
+}
+
+/* Individual Flip Digit */
+.flip-digit {
+	position: relative;
+	width: 80px;
+	height: 110px;
+	font-family: system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+	font-variant-numeric: tabular-nums;
+	box-sizing: border-box;
+	transform: none;
+	zoom: 1;
+}
+
+/* Flip Card Container */
+.flip-card {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	perspective: 500px;
+}
+
+/* Card Halves */
+.flip-card-top,
+.flip-card-bottom {
+	position: absolute;
+	left: 0;
+	right: 0;
+	width: 100%;
+	height: 50%;
+	overflow: hidden;
+	background: var(--background-secondary);
+	border: 2px solid var(--background-modifier-border);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+	box-sizing: border-box;
+	z-index: 1;
+}
+
+.flip-card-top {
+	top: 0;
+	border-radius: 8px 8px 0 0;
+	border-bottom-width: 1px;
+}
+
+.flip-card-bottom {
+	bottom: 0;
+	border-radius: 0 0 8px 8px;
+	border-top-width: 1px;
+}
+
+/* Inner content spans that hold the actual number */
+.flip-card-top span,
+.flip-card-bottom span {
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 0;
+	width: 100%;
+	height: 110px;
+	line-height: 110px;
+	font-size: 96px;
+	font-weight: 700;
+	color: var(--text-normal);
+	text-align: center;
+	display: block;
+}
+
+/* Bottom card: shift up by exactly half to show bottom half */
+.flip-card-bottom span {
+	top: -55px;
+}
+
+/* Flipping Animation Halves */
+.flip-card-flip-top,
+.flip-card-flip-bottom {
+	position: absolute;
+	left: 0;
+	right: 0;
+	width: 100%;
+	height: 50%;
+	overflow: hidden;
+	background: var(--background-secondary);
+	border: 2px solid var(--background-modifier-border);
+	backface-visibility: hidden;
+	transform-style: preserve-3d;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+	box-sizing: border-box;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.flip-card-flip-top {
+	top: 0;
+	border-radius: 8px 8px 0 0;
+	border-bottom-width: 1px;
+	transform-origin: bottom;
+	z-index: 3;
+}
+
+.flip-card-flip-bottom {
+	bottom: 0;
+	border-radius: 0 0 8px 8px;
+	border-top-width: 1px;
+	transform-origin: top;
+	z-index: 2;
+	transform: rotateX(90deg);
+}
+
+/* Show flip layers during animation */
+.flip-card.flipping .flip-card-flip-top,
+.flip-card.flipping .flip-card-flip-bottom {
+	opacity: 1;
+}
+
+/* Inner content spans for flip cards */
+.flip-card-flip-top span,
+.flip-card-flip-bottom span {
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 0;
+	width: 100%;
+	height: 110px;
+	line-height: 110px;
+	font-size: 96px;
+	font-weight: 700;
+	color: var(--text-normal);
+	text-align: center;
+	display: block;
+}
+
+/* Flip bottom: shift up by exactly half */
+.flip-card-flip-bottom span {
+	top: -55px;
+}
+
+/* Flipping Animation */
+.flip-card.flipping .flip-card-flip-top {
+	animation: flip-top 0.3s ease-in forwards;
+}
+
+.flip-card.flipping .flip-card-flip-bottom {
+	animation: flip-bottom 0.3s ease-out 0.3s forwards;
+}
+
+@keyframes flip-top {
+	0% {
+		transform: rotateX(0deg);
+	}
+	100% {
+		transform: rotateX(-90deg);
+	}
+}
+
+@keyframes flip-bottom {
+	0% {
+		transform: rotateX(90deg);
+	}
+	100% {
+		transform: rotateX(0deg);
+	}
+}
+
+/* Colon Separator */
+.flip-colon {
+	font-size: 96px;
+	font-weight: 700;
+	color: var(--text-normal);
+	display: flex;
+	align-items: center;
+	margin: 0 5px;
+	font-family: system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+	line-height: 110px;
+}
+
+/* Blinking Colon Animation */
+.flip-colon.blinking {
+	animation: blink 1s infinite;
+}
+
+@keyframes blink {
+	0%, 49% {
+		opacity: 1;
+	}
+	50%, 100% {
+		opacity: 0;
+	}
+}
+
+/* Timer Controls */
+.flip-clock-controls {
+	display: flex;
+	flex-direction: column;
+	gap: 15px;
+	align-items: center;
+	width: 100%;
+	max-width: 400px;
+}
+
+.flip-clock-btn {
+	padding: 10px 24px;
+	border-radius: 6px;
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border: none;
+	cursor: pointer;
+	font-size: 16px;
+	font-weight: 600;
+	transition: all 0.2s ease;
+	min-width: 100px;
+}
+
+.flip-clock-btn:hover {
+	background: var(--interactive-accent-hover);
+	transform: translateY(-1px);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.flip-clock-btn:active {
+	transform: translateY(0);
+}
+
+/* Timer Presets */
+.flip-clock-presets {
+	display: flex;
+	gap: 10px;
+	flex-wrap: wrap;
+	justify-content: center;
+}
+
+.flip-clock-preset-btn {
+	padding: 8px 16px;
+	border-radius: 4px;
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	border: 1px solid var(--background-modifier-border);
+	cursor: pointer;
+	font-size: 14px;
+	transition: all 0.2s ease;
+}
+
+.flip-clock-preset-btn:hover {
+	background: var(--interactive-hover);
+	border-color: var(--interactive-accent);
+}
+
+/* Timer Complete Animation */
+.timer-complete {
+	animation: pulse 0.5s ease-in-out 4;
+}
+
+@keyframes pulse {
+	0%, 100% {
+		transform: scale(1);
+		filter: brightness(1);
+	}
+	50% {
+		transform: scale(1.05);
+		filter: brightness(1.3);
+	}
+}
+
+/* High Contrast Mode */
+.theme-dark.high-contrast .flip-card-top,
+.theme-dark.high-contrast .flip-card-bottom,
+.theme-dark.high-contrast .flip-card-flip-top,
+.theme-dark.high-contrast .flip-card-flip-bottom {
+	background: #000;
+	color: #fff;
+	border-color: #fff;
+}
+
+.theme-light.high-contrast .flip-card-top,
+.theme-light.high-contrast .flip-card-bottom,
+.theme-light.high-contrast .flip-card-flip-top,
+.theme-light.high-contrast .flip-card-flip-bottom {
+	background: #fff;
+	color: #000;
+	border-color: #000;
+}
+
+/* Reduce Motion Preference */
+@media (prefers-reduced-motion: reduce) {
+	.flip-card-flip-top,
+	.flip-card-flip-bottom {
+		transition: none;
+		animation: none;
+	}
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+	.flip-digit {
+		width: 60px;
+		height: 85px;
+	}
+
+	.flip-card-top span,
+	.flip-card-bottom span,
+	.flip-card-flip-top span,
+	.flip-card-flip-bottom span {
+		height: 85px;
+		line-height: 85px;
+		font-size: 72px;
+	}
+
+	.flip-card-bottom span,
+	.flip-card-flip-bottom span {
+		top: -42.5px;
+	}
+
+	.flip-colon {
+		font-size: 72px;
+		line-height: 85px;
+	}
+
+	.flip-clock-display {
+		gap: 10px;
+		padding: 15px;
+	}
+}
+
+@media (max-width: 480px) {
+	.flip-digit {
+		width: 50px;
+		height: 70px;
+	}
+
+	.flip-card-top span,
+	.flip-card-bottom span,
+	.flip-card-flip-top span,
+	.flip-card-flip-bottom span {
+		height: 70px;
+		line-height: 70px;
+		font-size: 60px;
+	}
+
+	.flip-card-bottom span,
+	.flip-card-flip-bottom span {
+		top: -35px;
+	}
+
+	.flip-colon {
+		font-size: 60px;
+		line-height: 70px;
+	}
+
+	.flip-clock-display {
+		gap: 8px;
+		padding: 10px;
+	}
+
+	.flip-digit-pair {
+		gap: 5px;
+	}
+}
+
+/* Mac-style Aesthetics */
+.theme-light .flip-card-top,
+.theme-light .flip-card-bottom,
+.theme-light .flip-card-flip-top,
+.theme-light .flip-card-flip-bottom {
+	background: linear-gradient(180deg, #ffffff 0%, #f5f5f5 100%);
+	box-shadow:
+		0 2px 8px rgba(0, 0, 0, 0.1),
+		inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.theme-dark .flip-card-top,
+.theme-dark .flip-card-bottom,
+.theme-dark .flip-card-flip-top,
+.theme-dark .flip-card-flip-bottom {
+	background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%);
+	box-shadow:
+		0 2px 8px rgba(0, 0, 0, 0.5),
+		inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Embedded View (for markdown code blocks) */
+.flip-clock-embed {
+	width: 100%;
+	display: flex;
+	justify-content: center;
+	padding: 20px;
+	background: var(--background-primary);
+	border-radius: 8px;
+	border: 1px solid var(--background-modifier-border);
+}
+
+.flip-clock-embed .flip-clock-display {
+	transform: none;
+	zoom: 1;
+}
+
+.flip-clock-embed .flip-digit {
+	width: 65px;
+	height: 90px;
+}
+
+.flip-clock-embed .flip-card-top span,
+.flip-clock-embed .flip-card-bottom span,
+.flip-clock-embed .flip-card-flip-top span,
+.flip-clock-embed .flip-card-flip-bottom span {
+	height: 90px;
+	line-height: 90px;
+	font-size: 78px;
+}
+
+.flip-clock-embed .flip-card-bottom span,
+.flip-clock-embed .flip-card-flip-bottom span {
+	top: -45px;
+}
+
+.flip-clock-embed .flip-colon {
+	font-size: 78px;
+	line-height: 90px;
+}
+
+/* Loading State */
+.flip-clock-loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 200px;
+	color: var(--text-muted);
+	font-size: 16px;
+}
