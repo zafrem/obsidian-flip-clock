@@ -20,12 +20,15 @@ export interface FlipClockSettings {
 	blinkingColon: boolean;
 	reduceMotion: boolean;
 	highContrast: boolean;
+	showInStatusBar: boolean;
+	showFloatingClock: boolean;
+	floatingClockPosition: { x: number; y: number } | null;
 }
 
 export const DEFAULT_SETTINGS: FlipClockSettings = {
 	mode: 'clock',
 	use24Hour: true,
-	showSeconds: true,
+	showSeconds: false,
 	animationEnabled: true,
 	soundEnabled: false,
 	tickSoundEnabled: false,
@@ -39,11 +42,18 @@ export const DEFAULT_SETTINGS: FlipClockSettings = {
 	blinkingColon: false,
 	reduceMotion: false,
 	highContrast: false,
+	showInStatusBar: false,
+	showFloatingClock: false,
+	floatingClockPosition: null,
 };
 
 export default class FlipClockPlugin extends Plugin {
 	settings: FlipClockSettings;
 	audioManager: AudioManager;
+	statusBarItem: HTMLElement | null = null;
+	statusBarClock: StatusBarClock | null = null;
+	floatingClockEl: HTMLElement | null = null;
+	floatingClock: FloatingClock | null = null;
 
 	async onload() {
 		await this.loadSettings();
@@ -77,10 +87,69 @@ export default class FlipClockPlugin extends Plugin {
 		// Register markdown code block processor
 		this.registerMarkdownCodeBlockProcessor('flipclock', this.processFlipClockCodeBlock.bind(this));
 
+		// Setup status bar if enabled
+		if (this.settings.showInStatusBar) {
+			this.setupStatusBar();
+		}
+
+		// Setup floating clock if enabled
+		if (this.settings.showFloatingClock) {
+			this.setupFloatingClock();
+		}
+
 		console.log('Flip Clock plugin loaded');
 	}
 
+	setupStatusBar() {
+		if (!this.statusBarItem) {
+			this.statusBarItem = this.addStatusBarItem();
+			this.statusBarItem.addClass('flip-clock-status-bar');
+		}
+		if (!this.statusBarClock) {
+			this.statusBarClock = new StatusBarClock(this.statusBarItem, this);
+			this.statusBarClock.start();
+		}
+	}
+
+	removeStatusBar() {
+		if (this.statusBarClock) {
+			this.statusBarClock.stop();
+			this.statusBarClock = null;
+		}
+		if (this.statusBarItem) {
+			this.statusBarItem.remove();
+			this.statusBarItem = null;
+		}
+	}
+
+	setupFloatingClock() {
+		if (!this.floatingClockEl) {
+			this.floatingClockEl = document.body.createDiv('flip-clock-floating');
+		}
+		if (!this.floatingClock) {
+			this.floatingClock = new FloatingClock(this.floatingClockEl, this);
+			this.floatingClock.start();
+		}
+	}
+
+	removeFloatingClock() {
+		if (this.floatingClock) {
+			this.floatingClock.destroy();
+			this.floatingClock = null;
+		}
+		if (this.floatingClockEl) {
+			this.floatingClockEl.remove();
+			this.floatingClockEl = null;
+		}
+	}
+
 	onunload() {
+		// Clean up status bar
+		this.removeStatusBar();
+
+		// Clean up floating clock
+		this.removeFloatingClock();
+
 		// Clean up audio resources
 		if (this.audioManager) {
 			this.audioManager.dispose();
@@ -140,19 +209,19 @@ export default class FlipClockPlugin extends Plugin {
 
 	parseDuration(value: string): number {
 		let totalSeconds = 0;
-		const hourMatch = value.match(/(\d+)h/);
-		const minMatch = value.match(/(\d+)m/);
-		const secMatch = value.match(/(\d+)s/);
+		const hourMatch = /(\d+)h/.exec(value);
+		const minMatch = /(\d+)m/.exec(value);
+		const secMatch = /(\d+)s/.exec(value);
 
-		if (hourMatch) totalSeconds += parseInt(hourMatch[1]) * 3600;
-		if (minMatch) totalSeconds += parseInt(minMatch[1]) * 60;
-		if (secMatch) totalSeconds += parseInt(secMatch[1]);
+		if (hourMatch) totalSeconds += Number.parseInt(hourMatch[1]) * 3600;
+		if (minMatch) totalSeconds += Number.parseInt(minMatch[1]) * 60;
+		if (secMatch) totalSeconds += Number.parseInt(secMatch[1]);
 
 		return totalSeconds;
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		this.settings = { ...DEFAULT_SETTINGS, ...await this.loadData() };
 	}
 
 	async saveSettings() {
@@ -184,14 +253,304 @@ export default class FlipClockPlugin extends Plugin {
 	}
 }
 
+class FloatingClock {
+	private container: HTMLElement;
+	private plugin: FlipClockPlugin;
+	private clockEl: HTMLElement;
+	private intervalId: ReturnType<typeof setInterval> | null = null;
+	private isDragging = false;
+	private dragStartX = 0;
+	private dragStartY = 0;
+	private elementStartX = 0;
+	private elementStartY = 0;
+
+	constructor(container: HTMLElement, plugin: FlipClockPlugin) {
+		this.container = container;
+		this.plugin = plugin;
+		this.render();
+		this.setupDragging();
+		this.restorePosition();
+	}
+
+	render() {
+		this.container.empty();
+
+		// Create drag handle
+		const dragHandle = this.container.createDiv('flip-clock-floating-handle');
+		dragHandle.innerHTML = '⋮⋮';
+		dragHandle.title = 'Drag to move';
+
+		// Create clock display
+		this.clockEl = this.container.createDiv('flip-clock-floating-display');
+
+		// Create flip digits
+		this.createFlipDigitPair('floating-hours');
+		const colonDiv1 = this.clockEl.createDiv('flip-colon-mini');
+		colonDiv1.setText(':');
+		this.createFlipDigitPair('floating-minutes');
+
+		if (this.plugin.settings.showSeconds) {
+			const colonDiv2 = this.clockEl.createDiv('flip-colon-mini');
+			colonDiv2.setText(':');
+			this.createFlipDigitPair('floating-seconds');
+		}
+
+		this.updateTime();
+	}
+
+	private createFlipDigitPair(id: string): HTMLElement {
+		const container = this.clockEl.createDiv('flip-digit-pair-mini');
+		container.id = `flip-${id}`;
+
+		for (let i = 1; i <= 2; i++) {
+			const digit = container.createDiv('flip-digit-mini');
+			digit.id = `${id}-${i}`;
+			const card = digit.createDiv('flip-card-mini');
+
+			const top = card.createDiv('flip-card-top-mini');
+			const topSpan = top.createEl('span');
+			topSpan.setText('0');
+
+			const bottom = card.createDiv('flip-card-bottom-mini');
+			const bottomSpan = bottom.createEl('span');
+			bottomSpan.setText('0');
+
+			const flipTop = card.createDiv('flip-card-flip-top-mini');
+			flipTop.createEl('span');
+
+			const flipBottom = card.createDiv('flip-card-flip-bottom-mini');
+			flipBottom.createEl('span');
+		}
+
+		return container;
+	}
+
+	private setupDragging() {
+		const handleMouseDown = (e: MouseEvent) => {
+			this.isDragging = true;
+			this.dragStartX = e.clientX;
+			this.dragStartY = e.clientY;
+
+			const rect = this.container.getBoundingClientRect();
+			this.elementStartX = rect.left;
+			this.elementStartY = rect.top;
+
+			this.container.addClass('dragging');
+			e.preventDefault();
+		};
+
+		const handleMouseMove = (e: MouseEvent) => {
+			if (!this.isDragging) return;
+
+			const deltaX = e.clientX - this.dragStartX;
+			const deltaY = e.clientY - this.dragStartY;
+
+			const newX = this.elementStartX + deltaX;
+			const newY = this.elementStartY + deltaY;
+
+			this.container.style.left = `${newX}px`;
+			this.container.style.top = `${newY}px`;
+			this.container.style.transform = 'none';
+		};
+
+		const handleMouseUp = () => {
+			if (this.isDragging) {
+				this.isDragging = false;
+				this.container.removeClass('dragging');
+				this.savePosition();
+			}
+		};
+
+		this.container.addEventListener('mousedown', handleMouseDown);
+		document.addEventListener('mousemove', handleMouseMove);
+		document.addEventListener('mouseup', handleMouseUp);
+
+		// Store cleanup functions
+		this.container.dataset.cleanupDrag = 'true';
+	}
+
+	private restorePosition() {
+		if (this.plugin.settings.floatingClockPosition) {
+			const { x, y } = this.plugin.settings.floatingClockPosition;
+			this.container.style.left = `${x}px`;
+			this.container.style.top = `${y}px`;
+			this.container.style.transform = 'none';
+		} else {
+			// Default position (top center)
+			this.container.style.left = '50%';
+			this.container.style.top = '16px';
+			this.container.style.transform = 'translateX(-50%)';
+		}
+	}
+
+	private savePosition() {
+		const rect = this.container.getBoundingClientRect();
+		this.plugin.settings.floatingClockPosition = {
+			x: rect.left,
+			y: rect.top
+		};
+		this.plugin.saveSettings();
+	}
+
+	start() {
+		if (this.intervalId === null) {
+			this.intervalId = globalThis.setInterval(() => this.updateTime(), 1000);
+		}
+	}
+
+	stop() {
+		if (this.intervalId !== null) {
+			globalThis.clearInterval(this.intervalId);
+			this.intervalId = null;
+		}
+	}
+
+	destroy() {
+		this.stop();
+	}
+
+	private updateTime() {
+		const now = new Date();
+		let hours = now.getHours();
+
+		if (!this.plugin.settings.use24Hour && hours > 12) {
+			hours -= 12;
+		} else if (!this.plugin.settings.use24Hour && hours === 0) {
+			hours = 12;
+		}
+
+		const minutes = now.getMinutes();
+		const seconds = now.getSeconds();
+
+		this.updateDigitPair('floating-hours', hours);
+		this.updateDigitPair('floating-minutes', minutes);
+		if (this.plugin.settings.showSeconds) {
+			this.updateDigitPair('floating-seconds', seconds);
+		}
+	}
+
+	private updateDigitPair(id: string, value: number) {
+		const digit1 = Math.floor(value / 10);
+		const digit2 = value % 10;
+
+		this.updateDigit(`${id}-1`, digit1);
+		this.updateDigit(`${id}-2`, digit2);
+	}
+
+	private updateDigit(id: string, value: number) {
+		const digitEl = this.container.querySelector(`#${id}`);
+		if (!digitEl) return;
+
+		const top = digitEl.querySelector('.flip-card-top-mini span');
+		const bottom = digitEl.querySelector('.flip-card-bottom-mini span');
+		const flipTop = digitEl.querySelector('.flip-card-flip-top-mini span');
+		const flipBottom = digitEl.querySelector('.flip-card-flip-bottom-mini span');
+
+		if (top && bottom && flipTop && flipBottom) {
+			const currentValue = top.textContent || '';
+			const newValue = value.toString();
+
+			if (top.textContent !== bottom.textContent) {
+				top.textContent = newValue;
+				bottom.textContent = newValue;
+				return;
+			}
+
+			if (currentValue !== newValue) {
+				if (this.plugin.settings.animationEnabled && !this.plugin.settings.reduceMotion && currentValue !== '' && currentValue !== null) {
+					flipTop.textContent = currentValue;
+					flipBottom.textContent = newValue;
+
+					const card = digitEl.querySelector('.flip-card-mini');
+					card?.classList.add('flipping');
+
+					setTimeout(() => {
+						bottom.textContent = newValue;
+					}, 300);
+
+					setTimeout(() => {
+						top.textContent = newValue;
+						card?.classList.remove('flipping');
+					}, 600);
+				} else {
+					top.textContent = newValue;
+					bottom.textContent = newValue;
+				}
+			} else {
+				if (!top.textContent || !bottom.textContent) {
+					top.textContent = newValue;
+					bottom.textContent = newValue;
+				}
+			}
+		}
+	}
+}
+
+class StatusBarClock {
+	private container: HTMLElement;
+	private plugin: FlipClockPlugin;
+	private intervalId: ReturnType<typeof setInterval> | null = null;
+
+	constructor(container: HTMLElement, plugin: FlipClockPlugin) {
+		this.container = container;
+		this.plugin = plugin;
+		this.render();
+	}
+
+	render() {
+		this.container.empty();
+		this.container.addClass('flip-clock-status-bar-container');
+		this.updateTime();
+	}
+
+	start() {
+		if (this.intervalId === null) {
+			this.intervalId = globalThis.setInterval(() => this.updateTime(), 1000);
+		}
+	}
+
+	stop() {
+		if (this.intervalId !== null) {
+			globalThis.clearInterval(this.intervalId);
+			this.intervalId = null;
+		}
+	}
+
+	private updateTime() {
+		const now = new Date();
+		let hours = now.getHours();
+
+		if (!this.plugin.settings.use24Hour && hours > 12) {
+			hours -= 12;
+		} else if (!this.plugin.settings.use24Hour && hours === 0) {
+			hours = 12;
+		}
+
+		const minutes = now.getMinutes();
+		const seconds = now.getSeconds();
+
+		const hoursStr = String(hours).padStart(2, '0');
+		const minutesStr = String(minutes).padStart(2, '0');
+		const secondsStr = String(seconds).padStart(2, '0');
+
+		if (this.plugin.settings.showSeconds) {
+			this.container.setText(`${hoursStr}:${minutesStr}:${secondsStr}`);
+		} else {
+			this.container.setText(`${hoursStr}:${minutesStr}`);
+		}
+	}
+}
+
 class FlipClockView extends ItemView {
 	plugin: FlipClockPlugin;
 	private clockEl: HTMLElement;
 	private controlsEl: HTMLElement;
-	private intervalId: number | null = null;
-	private timerIntervalId: number | null = null;
-	private timerRunning: boolean = false;
-	private timerPaused: boolean = false;
+	private displayWrapper: HTMLElement;
+	private resizeObserver: ResizeObserver | null = null;
+	private intervalId: ReturnType<typeof setInterval> | null = null;
+	private timerIntervalId: ReturnType<typeof setInterval> | null = null;
+	private timerRunning = false;
+	private timerPaused = false;
 
 	constructor(leaf: WorkspaceLeaf, plugin: FlipClockPlugin) {
 		super(leaf);
@@ -211,15 +570,18 @@ class FlipClockView extends ItemView {
 	}
 
 	async onOpen() {
-		const container = this.containerEl.children[1];
+		const container = this.containerEl.children[1] as HTMLElement;
 		container.empty();
 		container.addClass('flip-clock-container');
 
 		// Create main container
 		this.containerEl = container.createDiv('flip-clock-main');
 
-		// Create mode selector
-		const modeSelector = this.containerEl.createDiv('flip-clock-mode-selector');
+		// Create toolbar
+		const toolbar = this.containerEl.createDiv('flip-clock-toolbar');
+
+		// Mode selector
+		const modeSelector = toolbar.createDiv('flip-clock-mode-selector');
 		const clockBtn = modeSelector.createEl('button', { text: 'Clock' });
 		const timerBtn = modeSelector.createEl('button', { text: 'Timer' });
 
@@ -235,32 +597,102 @@ class FlipClockView extends ItemView {
 			this.updateDisplay();
 		});
 
-		// Create clock display
-		this.clockEl = this.containerEl.createDiv('flip-clock-display');
+		// Show seconds checkbox
+		const secondsControl = toolbar.createDiv('flip-clock-seconds-control');
+		const secondsCheckbox = secondsControl.createEl('input', { type: 'checkbox' });
+		secondsCheckbox.id = 'show-seconds-checkbox';
+		secondsCheckbox.checked = this.plugin.settings.showSeconds;
+		const secondsLabel = secondsControl.createEl('label', { text: 'Show seconds' });
+		secondsLabel.htmlFor = 'show-seconds-checkbox';
+
+		secondsCheckbox.addEventListener('change', async () => {
+			this.plugin.settings.showSeconds = secondsCheckbox.checked;
+			await this.plugin.saveSettings();
+			this.updateDisplay();
+		});
+
+		// Create clock display wrapper
+		this.displayWrapper = this.containerEl.createDiv('flip-clock-display-wrapper');
+		this.clockEl = this.displayWrapper.createDiv('flip-clock-display');
 
 		// Create controls (for timer mode)
 		this.controlsEl = this.containerEl.createDiv('flip-clock-controls');
 
 		this.updateDisplay();
+		this.setupResponsiveSize();
 	}
 
 	async onClose() {
 		if (this.intervalId !== null) {
-			window.clearInterval(this.intervalId);
+			globalThis.clearInterval(this.intervalId);
 		}
 		if (this.timerIntervalId !== null) {
-			window.clearInterval(this.timerIntervalId);
+			globalThis.clearInterval(this.timerIntervalId);
 		}
+		if (this.resizeObserver) {
+			this.resizeObserver.disconnect();
+			this.resizeObserver = null;
+		}
+	}
+
+	private setupResponsiveSize() {
+		if (!this.displayWrapper) return;
+
+		// Create ResizeObserver to detect size changes
+		this.resizeObserver = new ResizeObserver(() => {
+			this.calculateResponsiveSize();
+		});
+
+		this.resizeObserver.observe(this.displayWrapper);
+
+		// Initial size calculation
+		this.calculateResponsiveSize();
+	}
+
+	private calculateResponsiveSize() {
+		if (!this.displayWrapper || !this.clockEl) return;
+
+		const wrapperRect = this.displayWrapper.getBoundingClientRect();
+		const availableWidth = wrapperRect.width;
+		const availableHeight = wrapperRect.height;
+
+		// Calculate how many digit pairs we have
+		const digitPairCount = this.plugin.settings.showSeconds ? 3 : 2; // HH:MM or HH:MM:SS
+		const colonCount = this.plugin.settings.showSeconds ? 2 : 1;
+
+		// Base dimensions for one digit at 100% scale
+		const baseDigitWidth = 80;
+		const baseDigitHeight = 110;
+		const baseGapBetweenDigits = 8; // gap within pair
+		const baseGapBetweenPairs = 15; // gap between pairs (includes colon)
+		const baseColonWidth = 30;
+
+		// Calculate total width needed at base scale
+		const totalDigitWidth = (digitPairCount * 2 * baseDigitWidth) + (digitPairCount * baseGapBetweenDigits);
+		const totalColonWidth = colonCount * baseColonWidth;
+		const totalGapWidth = (digitPairCount - 1) * baseGapBetweenPairs;
+		const totalBaseWidth = totalDigitWidth + totalColonWidth + totalGapWidth;
+
+		// Calculate scale factors
+		const scaleByWidth = (availableWidth * 0.9) / totalBaseWidth; // 90% to leave some margin
+		const scaleByHeight = (availableHeight * 0.7) / baseDigitHeight; // 70% to leave room for toolbar/controls
+
+		// Use the smaller scale to ensure it fits
+		const scale = Math.min(scaleByWidth, scaleByHeight, 2.0); // Max 2x
+		const finalScale = Math.max(scale, 0.3); // Min 0.3x
+
+		// Apply scale
+		this.clockEl.style.transform = `scale(${finalScale})`;
 	}
 
 	private updateDisplay() {
 		// Clear existing interval
 		if (this.intervalId !== null) {
-			window.clearInterval(this.intervalId);
+			globalThis.clearInterval(this.intervalId);
 			this.intervalId = null;
 		}
 		if (this.timerIntervalId !== null) {
-			window.clearInterval(this.timerIntervalId);
+			globalThis.clearInterval(this.timerIntervalId);
 			this.timerIntervalId = null;
 		}
 
@@ -269,6 +701,11 @@ class FlipClockView extends ItemView {
 		} else {
 			this.showTimerMode();
 		}
+
+		// Recalculate size after display changes
+		setTimeout(() => {
+			this.calculateResponsiveSize();
+		}, 10);
 	}
 
 	private showClockMode() {
@@ -277,12 +714,18 @@ class FlipClockView extends ItemView {
 		this.controlsEl.hide();
 
 		// Create flip digits for clock
-		const hoursDiv = this.createFlipDigitPair('hours');
+		this.createFlipDigitPair('hours');
 		const colonDiv1 = this.clockEl.createDiv('flip-colon');
 		colonDiv1.setText(':');
-		const minutesDiv = this.createFlipDigitPair('minutes');
+		if (this.plugin.settings.blinkingColon) {
+			colonDiv1.addClass('blinking');
+		}
+		this.createFlipDigitPair('minutes');
 		const colonDiv2 = this.clockEl.createDiv('flip-colon');
 		colonDiv2.setText(':');
+		if (this.plugin.settings.blinkingColon) {
+			colonDiv2.addClass('blinking');
+		}
 		const secondsDiv = this.createFlipDigitPair('seconds');
 
 		if (!this.plugin.settings.showSeconds) {
@@ -291,7 +734,7 @@ class FlipClockView extends ItemView {
 		}
 
 		this.updateClock();
-		this.intervalId = window.setInterval(() => this.updateClock(), 1000);
+		this.intervalId = globalThis.setInterval(() => this.updateClock(), 1000);
 	}
 
 	private showTimerMode() {
@@ -300,13 +743,19 @@ class FlipClockView extends ItemView {
 		this.controlsEl.show();
 
 		// Create flip digits for timer
-		const hoursDiv = this.createFlipDigitPair('hours');
+		this.createFlipDigitPair('hours');
 		const colonDiv1 = this.clockEl.createDiv('flip-colon');
 		colonDiv1.setText(':');
-		const minutesDiv = this.createFlipDigitPair('minutes');
+		if (this.plugin.settings.blinkingColon) {
+			colonDiv1.addClass('blinking');
+		}
+		this.createFlipDigitPair('minutes');
 		const colonDiv2 = this.clockEl.createDiv('flip-colon');
 		colonDiv2.setText(':');
-		const secondsDiv = this.createFlipDigitPair('seconds');
+		if (this.plugin.settings.blinkingColon) {
+			colonDiv2.addClass('blinking');
+		}
+		this.createFlipDigitPair('seconds');
 
 		// Create timer controls
 		const startBtn = this.controlsEl.createEl('button', { text: 'Start', cls: 'flip-clock-btn' });
@@ -459,11 +908,11 @@ class FlipClockView extends ItemView {
 
 			if (currentValue !== newValue) {
 				// Play tick sound only if there was a previous value
-				if (currentValue !== '' && currentValue !== null && currentValue !== '0') {
+				if (currentValue !== '' && currentValue !== null) {
 					this.playTickSound();
 				}
 
-				if (this.plugin.settings.animationEnabled && !this.plugin.settings.reduceMotion && currentValue !== '' && currentValue !== null && currentValue !== '0') {
+				if (this.plugin.settings.animationEnabled && !this.plugin.settings.reduceMotion && currentValue !== '' && currentValue !== null) {
 					// Set flip cards
 					flipTop.textContent = currentValue;
 					flipBottom.textContent = newValue;
@@ -471,10 +920,14 @@ class FlipClockView extends ItemView {
 					const card = digitEl.querySelector('.flip-card');
 					card?.classList.add('flipping');
 
+					// Change bottom number when top flip completes (at 300ms)
 					setTimeout(() => {
-						// CRITICAL: Update both to same value
-						top.textContent = newValue;
 						bottom.textContent = newValue;
+					}, 300);
+
+					setTimeout(() => {
+						// Update top to match bottom (which is already showing newValue)
+						top.textContent = newValue;
 						card?.classList.remove('flipping');
 					}, 600);
 				} else {
@@ -499,7 +952,7 @@ class FlipClockView extends ItemView {
 		this.timerRunning = true;
 		this.timerPaused = false;
 
-		this.timerIntervalId = window.setInterval(() => {
+		this.timerIntervalId = globalThis.setInterval(() => {
 			if (this.plugin.settings.timerRemaining > 0) {
 				this.plugin.settings.timerRemaining--;
 				this.updateTimerDisplay();
@@ -517,7 +970,7 @@ class FlipClockView extends ItemView {
 	private pauseTimer() {
 		this.timerPaused = true;
 		if (this.timerIntervalId !== null) {
-			window.clearInterval(this.timerIntervalId);
+			globalThis.clearInterval(this.timerIntervalId);
 			this.timerIntervalId = null;
 		}
 	}
@@ -526,7 +979,7 @@ class FlipClockView extends ItemView {
 		this.timerRunning = false;
 		this.timerPaused = false;
 		if (this.timerIntervalId !== null) {
-			window.clearInterval(this.timerIntervalId);
+			globalThis.clearInterval(this.timerIntervalId);
 			this.timerIntervalId = null;
 		}
 		this.plugin.settings.timerRemaining = this.plugin.settings.timerDuration;
@@ -587,31 +1040,39 @@ class FlipClockEmbedView {
 	private container: HTMLElement;
 	private plugin: FlipClockPlugin;
 	private settings: FlipClockSettings;
-	private intervalId: number | null = null;
+	private displayWrapper: HTMLElement | null = null;
+	private resizeObserver: ResizeObserver | null = null;
+	private intervalId: ReturnType<typeof setInterval> | null = null;
 	private clockEl: HTMLElement | null = null;
 	private controlsEl: HTMLElement | null = null;
-	private timerIntervalId: number | null = null;
-	private timerRunning: boolean = false;
-	private timerPaused: boolean = false;
+	private timerIntervalId: ReturnType<typeof setInterval> | null = null;
+	private timerRunning = false;
+	private timerPaused = false;
 
 	constructor(container: HTMLElement, plugin: FlipClockPlugin, options: Partial<FlipClockSettings>) {
 		this.container = container;
 		this.plugin = plugin;
 		// Merge options with plugin settings
-		this.settings = Object.assign({}, plugin.settings, options);
+		this.settings = { ...plugin.settings, ...options };
 	}
 
 	render() {
 		this.container.empty();
 
+		// Create display wrapper for responsive sizing
+		this.displayWrapper = this.container.createDiv('flip-clock-display-wrapper');
+
 		// Create clock display
-		this.clockEl = this.container.createDiv('flip-clock-display');
+		this.clockEl = this.displayWrapper.createDiv('flip-clock-display');
 
 		if (this.settings.mode === 'clock') {
 			this.renderClock();
 		} else {
 			this.renderTimer();
 		}
+
+		// Setup responsive sizing
+		this.setupResponsiveSize();
 	}
 
 	private renderClock() {
@@ -620,19 +1081,25 @@ class FlipClockEmbedView {
 		this.clockEl.empty();
 
 		// Create flip digits
-		const hoursDiv = this.createFlipDigitPair('embed-hours');
+		this.createFlipDigitPair('embed-hours');
 		const colonDiv1 = this.clockEl.createDiv('flip-colon');
 		colonDiv1.setText(':');
-		const minutesDiv = this.createFlipDigitPair('embed-minutes');
+		if (this.settings.blinkingColon) {
+			colonDiv1.addClass('blinking');
+		}
+		this.createFlipDigitPair('embed-minutes');
 
 		if (this.settings.showSeconds) {
 			const colonDiv2 = this.clockEl.createDiv('flip-colon');
 			colonDiv2.setText(':');
-			const secondsDiv = this.createFlipDigitPair('embed-seconds');
+			if (this.settings.blinkingColon) {
+				colonDiv2.addClass('blinking');
+			}
+			this.createFlipDigitPair('embed-seconds');
 		}
 
 		this.updateClock();
-		this.intervalId = window.setInterval(() => this.updateClock(), 1000);
+		this.intervalId = globalThis.setInterval(() => this.updateClock(), 1000);
 	}
 
 	private renderTimer() {
@@ -641,13 +1108,19 @@ class FlipClockEmbedView {
 		this.clockEl.empty();
 
 		// Create flip digits
-		const hoursDiv = this.createFlipDigitPair('embed-hours');
+		this.createFlipDigitPair('embed-hours');
 		const colonDiv1 = this.clockEl.createDiv('flip-colon');
 		colonDiv1.setText(':');
-		const minutesDiv = this.createFlipDigitPair('embed-minutes');
+		if (this.settings.blinkingColon) {
+			colonDiv1.addClass('blinking');
+		}
+		this.createFlipDigitPair('embed-minutes');
 		const colonDiv2 = this.clockEl.createDiv('flip-colon');
 		colonDiv2.setText(':');
-		const secondsDiv = this.createFlipDigitPair('embed-seconds');
+		if (this.settings.blinkingColon) {
+			colonDiv2.addClass('blinking');
+		}
+		this.createFlipDigitPair('embed-seconds');
 
 		// Create controls
 		this.controlsEl = this.container.createDiv('flip-clock-controls');
@@ -788,7 +1261,7 @@ class FlipClockEmbedView {
 			}
 
 			if (currentValue !== newValue) {
-				if (this.settings.animationEnabled && !this.settings.reduceMotion && currentValue !== '' && currentValue !== null && currentValue !== '0') {
+				if (this.settings.animationEnabled && !this.settings.reduceMotion && currentValue !== '' && currentValue !== null) {
 					// Set flip cards
 					flipTop.textContent = currentValue;
 					flipBottom.textContent = newValue;
@@ -796,10 +1269,14 @@ class FlipClockEmbedView {
 					const card = digitEl.querySelector('.flip-card');
 					card?.classList.add('flipping');
 
+					// Change bottom number when top flip completes (at 300ms)
 					setTimeout(() => {
-						// CRITICAL: Update both to same value
-						top.textContent = newValue;
 						bottom.textContent = newValue;
+					}, 300);
+
+					setTimeout(() => {
+						// Update top to match bottom (which is already showing newValue)
+						top.textContent = newValue;
 						card?.classList.remove('flipping');
 					}, 600);
 				} else {
@@ -824,7 +1301,7 @@ class FlipClockEmbedView {
 		this.timerRunning = true;
 		this.timerPaused = false;
 
-		this.timerIntervalId = window.setInterval(() => {
+		this.timerIntervalId = globalThis.setInterval(() => {
 			if (this.settings.timerRemaining > 0) {
 				this.settings.timerRemaining--;
 				this.updateTimerDisplay();
@@ -837,7 +1314,7 @@ class FlipClockEmbedView {
 	private pauseTimer() {
 		this.timerPaused = true;
 		if (this.timerIntervalId !== null) {
-			window.clearInterval(this.timerIntervalId);
+			globalThis.clearInterval(this.timerIntervalId);
 			this.timerIntervalId = null;
 		}
 	}
@@ -846,7 +1323,7 @@ class FlipClockEmbedView {
 		this.timerRunning = false;
 		this.timerPaused = false;
 		if (this.timerIntervalId !== null) {
-			window.clearInterval(this.timerIntervalId);
+			globalThis.clearInterval(this.timerIntervalId);
 			this.timerIntervalId = null;
 		}
 		this.settings.timerRemaining = this.settings.timerDuration;
@@ -874,12 +1351,66 @@ class FlipClockEmbedView {
 		}
 	}
 
+	private setupResponsiveSize() {
+		if (!this.displayWrapper) return;
+
+		// Create ResizeObserver to detect size changes
+		this.resizeObserver = new ResizeObserver(() => {
+			this.calculateResponsiveSize();
+		});
+
+		this.resizeObserver.observe(this.displayWrapper);
+
+		// Initial size calculation
+		this.calculateResponsiveSize();
+	}
+
+	private calculateResponsiveSize() {
+		if (!this.displayWrapper || !this.clockEl) return;
+
+		const wrapperRect = this.displayWrapper.getBoundingClientRect();
+		const availableWidth = wrapperRect.width;
+		const availableHeight = wrapperRect.height;
+
+		// Calculate how many digit pairs we have
+		const digitPairCount = this.settings.showSeconds ? 3 : 2; // HH:MM or HH:MM:SS
+		const colonCount = this.settings.showSeconds ? 2 : 1;
+
+		// Base dimensions for one digit at 100% scale
+		const baseDigitWidth = 80;
+		const baseDigitHeight = 110;
+		const baseGapBetweenDigits = 8; // gap within pair
+		const baseGapBetweenPairs = 15; // gap between pairs (includes colon)
+		const baseColonWidth = 30;
+
+		// Calculate total width needed at base scale
+		const totalDigitWidth = (digitPairCount * 2 * baseDigitWidth) + (digitPairCount * baseGapBetweenDigits);
+		const totalColonWidth = colonCount * baseColonWidth;
+		const totalGapWidth = (digitPairCount - 1) * baseGapBetweenPairs;
+		const totalBaseWidth = totalDigitWidth + totalColonWidth + totalGapWidth;
+
+		// Calculate scale factors
+		const scaleByWidth = (availableWidth * 0.9) / totalBaseWidth; // 90% to leave some margin
+		const scaleByHeight = (availableHeight * 0.8) / baseDigitHeight; // 80% for embedded views
+
+		// Use the smaller scale to ensure it fits
+		const scale = Math.min(scaleByWidth, scaleByHeight, 1.5); // Max 1.5x for embedded
+		const finalScale = Math.max(scale, 0.3); // Min 0.3x
+
+		// Apply scale
+		this.clockEl.style.transform = `scale(${finalScale})`;
+	}
+
 	destroy() {
 		if (this.intervalId !== null) {
-			window.clearInterval(this.intervalId);
+			globalThis.clearInterval(this.intervalId);
 		}
 		if (this.timerIntervalId !== null) {
-			window.clearInterval(this.timerIntervalId);
+			globalThis.clearInterval(this.timerIntervalId);
+		}
+		if (this.resizeObserver) {
+			this.resizeObserver.disconnect();
+			this.resizeObserver = null;
 		}
 	}
 }
@@ -908,16 +1439,6 @@ class FlipClockSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.use24Hour)
 				.onChange(async (value) => {
 					this.plugin.settings.use24Hour = value;
-					await this.plugin.saveSettings();
-				}));
-
-		new Setting(containerEl)
-			.setName('Show seconds')
-			.setDesc('Display seconds in the clock')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.showSeconds)
-				.onChange(async (value) => {
-					this.plugin.settings.showSeconds = value;
 					await this.plugin.saveSettings();
 				}));
 
@@ -1033,6 +1554,39 @@ class FlipClockSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.highContrast = value;
 					await this.plugin.saveSettings();
+				}));
+
+		// Unobtrusive Display
+		containerEl.createEl('h3', { text: 'Unobtrusive Display' });
+
+		new Setting(containerEl)
+			.setName('Show in status bar')
+			.setDesc('Display time in the status bar at the bottom (minimal and unobtrusive)')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.showInStatusBar)
+				.onChange(async (value) => {
+					this.plugin.settings.showInStatusBar = value;
+					await this.plugin.saveSettings();
+					if (value) {
+						this.plugin.setupStatusBar();
+					} else {
+						this.plugin.removeStatusBar();
+					}
+				}));
+
+		new Setting(containerEl)
+			.setName('Show floating clock')
+			.setDesc('Display a minimal floating clock overlay in your workspace')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.showFloatingClock)
+				.onChange(async (value) => {
+					this.plugin.settings.showFloatingClock = value;
+					await this.plugin.saveSettings();
+					if (value) {
+						this.plugin.setupFloatingClock();
+					} else {
+						this.plugin.removeFloatingClock();
+					}
 				}));
 	}
 }

@@ -28,6 +28,15 @@ A Mac-inspired flip clock plugin for Obsidian with timer functionality. Features
 - Volume control
 - Theme-aware (automatically adapts to light/dark mode)
 
+### Display Controls
+- **Zoom Controls**: 50% - 300% with buttons
+- **Mouse Wheel Zoom**: Ctrl/Cmd + Wheel to zoom
+- **Trackpad Pinch**: Pinch to zoom support
+
+### Unobtrusive Display Options
+- **Status Bar Display**: Show time in the bottom status bar (minimal and unobtrusive)
+- **Floating Clock Overlay**: Minimal clock overlay with three position options (top, middle, bottom)
+
 ### Embedding
 - Dockable panel view
 - Markdown code block support for embedding in notes
@@ -56,6 +65,20 @@ A Mac-inspired flip clock plugin for Obsidian with timer functionality. Features
 - Open command palette (Cmd/Ctrl + P)
 - Search for "Open Flip Clock"
 - Press Enter
+
+### Display Controls
+
+The flip clock includes powerful display controls for customization:
+
+**Zoom Controls:**
+- **+ / − buttons**: Increase or decrease size by 10%
+- **Reset button**: Return to 100% zoom
+- **Ctrl/Cmd + Mouse Wheel**: Fine-tune zoom level
+- **Trackpad Pinch**: Natural pinch-to-zoom gesture
+- **Range**: 50% to 300%
+
+**Quick Toggles:**
+- **Show seconds checkbox**: Toggle seconds display on/off directly from the toolbar
 
 ### Clock Mode
 
@@ -125,7 +148,6 @@ Access settings via Settings → Community Plugins → Flip Clock
 
 ### Clock Display
 - **24-hour format**: Toggle between 12h and 24h time formats
-- **Show seconds**: Display or hide seconds
 - **Blinking colon**: Make the colon separator blink every second
 
 ### Animation
@@ -144,6 +166,13 @@ Access settings via Settings → Community Plugins → Flip Clock
 
 ### Accessibility
 - **High contrast**: Enhanced visibility with high contrast colors
+
+### Display Size
+- **Default zoom level**: Set your preferred zoom level (50% - 300%)
+
+### Unobtrusive Display
+- **Show in status bar**: Display time in the status bar at the bottom (minimal and unobtrusive)
+- **Show floating clock**: Display a minimal floating clock overlay in your workspace
 
 ## Keyboard Shortcuts
 
@@ -238,7 +267,7 @@ Inspired by classic mechanical flip clocks and Mac OS design aesthetics.
 
 ## Changelog
 
-### 1.0.0 (Initial Release)
+### 0.0.1 (Initial Release)
 - Clock mode with real-time display
 - Timer mode with countdown functionality
 - Flip animations
@@ -247,3 +276,4 @@ Inspired by classic mechanical flip clocks and Mac OS design aesthetics.
 - Customizable settings
 - Accessibility options
 - Theme-aware styling
+- Status bar display

@@ -2,9 +2,9 @@
 
 export class AudioManager {
 	private audioContext: AudioContext | null = null;
-	private volume: number = 0.5;
+	private volume = 0.5;
 
-	constructor(volume: number = 0.5) {
+	constructor(volume = 0.5) {
 		this.volume = volume;
 		this.initializeAudioContext();
 	}
@@ -12,8 +12,8 @@ export class AudioManager {
 	private initializeAudioContext() {
 		try {
 			// Create AudioContext on user interaction to avoid browser restrictions
-			if (typeof window !== 'undefined' && (window.AudioContext || (window as any).webkitAudioContext)) {
-				this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+			if (typeof globalThis.window !== 'undefined' && (globalThis.AudioContext || (globalThis as any).webkitAudioContext)) {
+				this.audioContext = new (globalThis.AudioContext || (globalThis as any).webkitAudioContext)();
 			}
 		} catch (e) {
 			console.error('Failed to initialize AudioContext:', e);

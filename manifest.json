@@ -1,7 +1,7 @@
 {
   "id": "obsidian-flip-clock",
   "name": "Flip Clock",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "minAppVersion": "1.5.0",
   "description": "A Mac-style flip clock with timer functionality. Features retro flip animations and customizable countdown timers.",
   "author": "Your Name",
