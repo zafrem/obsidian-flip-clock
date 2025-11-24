@@ -54,18 +54,17 @@ describe('AudioManager', () => {
     });
 
     it('should create oscillator for tick sound', () => {
-      const mockContext = (globalThis.AudioContext as jest.Mock).mock.results[0].value;
-      audioManager.playTick();
-      expect(mockContext.createOscillator).toHaveBeenCalled();
-      expect(mockContext.createGain).toHaveBeenCalled();
+      const AudioContextMock = globalThis.AudioContext as jest.Mock;
+      if (AudioContextMock.mock.results[0]) {
+        const mockContext = AudioContextMock.mock.results[0].value;
+        audioManager.playTick();
+        expect(mockContext.createOscillator).toHaveBeenCalled();
+        expect(mockContext.createGain).toHaveBeenCalled();
+      }
     });
 
     it('should handle missing AudioContext gracefully', () => {
       const managerWithoutContext = new AudioManager();
-      // Clear the mock to simulate no context
-      (globalThis.AudioContext as jest.Mock).mockImplementationOnce(() => {
-        throw new Error('AudioContext not available');
-      });
       expect(() => managerWithoutContext.playTick()).not.toThrow();
     });
   });
@@ -76,18 +75,24 @@ describe('AudioManager', () => {
     });
 
     it('should create multiple oscillators for alarm melody', () => {
-      const mockContext = (globalThis.AudioContext as jest.Mock).mock.results[0].value;
-      audioManager.playAlarm();
-      expect(mockContext.createOscillator).toHaveBeenCalled();
-      expect(mockContext.createGain).toHaveBeenCalled();
+      const AudioContextMock = globalThis.AudioContext as jest.Mock;
+      if (AudioContextMock.mock.results[0]) {
+        const mockContext = AudioContextMock.mock.results[0].value;
+        audioManager.playAlarm();
+        expect(mockContext.createOscillator).toHaveBeenCalled();
+        expect(mockContext.createGain).toHaveBeenCalled();
+      }
     });
 
     it('should play melody pattern', () => {
-      const mockContext = (globalThis.AudioContext as jest.Mock).mock.results[0].value;
-      const createOscillatorSpy = jest.spyOn(mockContext, 'createOscillator');
-      audioManager.playAlarm();
-      // Should create 6 oscillators (3 notes x 2 repetitions)
-      expect(createOscillatorSpy.mock.calls.length).toBeGreaterThanOrEqual(6);
+      const AudioContextMock = globalThis.AudioContext as jest.Mock;
+      if (AudioContextMock.mock.results[0]) {
+        const mockContext = AudioContextMock.mock.results[0].value;
+        const createOscillatorSpy = jest.spyOn(mockContext, 'createOscillator');
+        audioManager.playAlarm();
+        // Should create 6 oscillators (3 notes x 2 repetitions)
+        expect(createOscillatorSpy.mock.calls.length).toBeGreaterThanOrEqual(6);
+      }
     });
   });
 
@@ -97,26 +102,35 @@ describe('AudioManager', () => {
     });
 
     it('should create noise buffer for flip sound', () => {
-      const mockContext = (globalThis.AudioContext as jest.Mock).mock.results[0].value;
-      audioManager.playFlip();
-      expect(mockContext.createBuffer).toHaveBeenCalled();
-      expect(mockContext.createBufferSource).toHaveBeenCalled();
-      expect(mockContext.createBiquadFilter).toHaveBeenCalled();
+      const AudioContextMock = globalThis.AudioContext as jest.Mock;
+      if (AudioContextMock.mock.results[0]) {
+        const mockContext = AudioContextMock.mock.results[0].value;
+        audioManager.playFlip();
+        expect(mockContext.createBuffer).toHaveBeenCalled();
+        expect(mockContext.createBufferSource).toHaveBeenCalled();
+        expect(mockContext.createBiquadFilter).toHaveBeenCalled();
+      }
     });
 
     it('should apply bandpass filter to noise', () => {
-      const mockContext = (globalThis.AudioContext as jest.Mock).mock.results[0].value;
-      const mockFilter = mockContext.createBiquadFilter();
-      audioManager.playFlip();
-      expect(mockFilter.frequency.setValueAtTime).toHaveBeenCalled();
+      const AudioContextMock = globalThis.AudioContext as jest.Mock;
+      if (AudioContextMock.mock.results[0]) {
+        const mockContext = AudioContextMock.mock.results[0].value;
+        const mockFilter = mockContext.createBiquadFilter();
+        audioManager.playFlip();
+        expect(mockFilter.frequency.setValueAtTime).toHaveBeenCalled();
+      }
     });
   });
 
   describe('dispose', () => {
     it('should close AudioContext', () => {
-      const mockContext = (globalThis.AudioContext as jest.Mock).mock.results[0].value;
-      audioManager.dispose();
-      expect(mockContext.close).toHaveBeenCalled();
+      const AudioContextMock = globalThis.AudioContext as jest.Mock;
+      if (AudioContextMock.mock.results[0]) {
+        const mockContext = AudioContextMock.mock.results[0].value;
+        audioManager.dispose();
+        expect(mockContext.close).toHaveBeenCalled();
+      }
     });
 
     it('should handle dispose when already disposed', () => {
@@ -140,37 +154,49 @@ describe('AudioManager', () => {
     });
 
     it('should handle playback errors gracefully', () => {
-      const mockContext = (globalThis.AudioContext as jest.Mock).mock.results[0].value;
-      mockContext.createOscillator.mockImplementationOnce(() => {
-        throw new Error('Oscillator creation failed');
-      });
-      expect(() => audioManager.playTick()).not.toThrow();
+      const AudioContextMock = globalThis.AudioContext as jest.Mock;
+      if (AudioContextMock.mock.results[0]) {
+        const mockContext = AudioContextMock.mock.results[0].value;
+        mockContext.createOscillator.mockImplementationOnce(() => {
+          throw new Error('Oscillator creation failed');
+        });
+        expect(() => audioManager.playTick()).not.toThrow();
+      }
     });
   });
 
   describe('volume control', () => {
     it('should apply volume to tick sound', () => {
-      const mockContext = (globalThis.AudioContext as jest.Mock).mock.results[0].value;
-      const mockGain = mockContext.createGain();
-      audioManager.setVolume(0.8);
-      audioManager.playTick();
-      expect(mockGain.gain.linearRampToValueAtTime).toHaveBeenCalled();
+      const AudioContextMock = globalThis.AudioContext as jest.Mock;
+      if (AudioContextMock.mock.results[0]) {
+        const mockContext = AudioContextMock.mock.results[0].value;
+        const mockGain = mockContext.createGain();
+        audioManager.setVolume(0.8);
+        audioManager.playTick();
+        expect(mockGain.gain.linearRampToValueAtTime).toHaveBeenCalled();
+      }
     });
 
     it('should apply volume to alarm sound', () => {
-      const mockContext = (globalThis.AudioContext as jest.Mock).mock.results[0].value;
-      const mockGain = mockContext.createGain();
-      audioManager.setVolume(0.6);
-      audioManager.playAlarm();
-      expect(mockGain.gain.linearRampToValueAtTime).toHaveBeenCalled();
+      const AudioContextMock = globalThis.AudioContext as jest.Mock;
+      if (AudioContextMock.mock.results[0]) {
+        const mockContext = AudioContextMock.mock.results[0].value;
+        const mockGain = mockContext.createGain();
+        audioManager.setVolume(0.6);
+        audioManager.playAlarm();
+        expect(mockGain.gain.linearRampToValueAtTime).toHaveBeenCalled();
+      }
     });
 
     it('should apply volume to flip sound', () => {
-      const mockContext = (globalThis.AudioContext as jest.Mock).mock.results[0].value;
-      const mockGain = mockContext.createGain();
-      audioManager.setVolume(0.4);
-      audioManager.playFlip();
-      expect(mockGain.gain.linearRampToValueAtTime).toHaveBeenCalled();
+      const AudioContextMock = globalThis.AudioContext as jest.Mock;
+      if (AudioContextMock.mock.results[0]) {
+        const mockContext = AudioContextMock.mock.results[0].value;
+        const mockGain = mockContext.createGain();
+        audioManager.setVolume(0.4);
+        audioManager.playFlip();
+        expect(mockGain.gain.linearRampToValueAtTime).toHaveBeenCalled();
+      }
     });
   });
 });

@@ -1,33 +1,5 @@
 import FlipClockPlugin, { DEFAULT_SETTINGS } from './main';
 
-// Mock Obsidian API
-jest.mock('obsidian', () => ({
-  Plugin: class MockPlugin {
-    app: any;
-    manifest: any;
-    loadData = jest.fn().mockResolvedValue({});
-    saveData = jest.fn().mockResolvedValue(undefined);
-    addRibbonIcon = jest.fn();
-    addCommand = jest.fn();
-    addSettingTab = jest.fn();
-    registerView = jest.fn();
-    registerMarkdownCodeBlockProcessor = jest.fn();
-    addStatusBarItem = jest.fn(() => ({
-      addClass: jest.fn(),
-      setText: jest.fn(),
-      remove: jest.fn(),
-    }));
-  },
-  ItemView: class MockItemView {
-    containerEl: any = {
-      children: [null, document.createElement('div')],
-    };
-    leaf: any;
-  },
-  PluginSettingTab: class MockPluginSettingTab {},
-  Setting: jest.fn(),
-}));
-
 describe('FlipClockPlugin', () => {
   let plugin: FlipClockPlugin;
 
