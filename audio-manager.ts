@@ -12,8 +12,11 @@ export class AudioManager {
 	private initializeAudioContext() {
 		try {
 			// Create AudioContext on user interaction to avoid browser restrictions
-			if (typeof globalThis.window !== 'undefined' && (globalThis.AudioContext || (globalThis as any).webkitAudioContext)) {
-				this.audioContext = new (globalThis.AudioContext || (globalThis as any).webkitAudioContext)();
+			if (globalThis.window !== undefined && (globalThis.AudioContext || (globalThis as typeof globalThis & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)) {
+				const AudioContextClass = globalThis.AudioContext || (globalThis as typeof globalThis & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+				if (AudioContextClass) {
+					this.audioContext = new AudioContextClass();
+				}
 			}
 		} catch (e) {
 			console.error('Failed to initialize AudioContext:', e);
@@ -70,11 +73,13 @@ export class AudioManager {
 		try {
 			// Create a pleasant alarm sound using multiple oscillators
 			const playTone = (frequency: number, startTime: number, duration: number) => {
-				const oscillator = this.audioContext!.createOscillator();
-				const gainNode = this.audioContext!.createGain();
+				if (!this.audioContext) return;
+				
+				const oscillator = this.audioContext.createOscillator();
+				const gainNode = this.audioContext.createGain();
 
 				oscillator.connect(gainNode);
-				gainNode.connect(this.audioContext!.destination);
+				gainNode.connect(this.audioContext.destination);
 
 				oscillator.type = 'sine';
 				oscillator.frequency.setValueAtTime(frequency, startTime);

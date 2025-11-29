@@ -1,10 +1,36 @@
 import FlipClockPlugin, { DEFAULT_SETTINGS } from './main';
 
+interface MockApp {
+  workspace: {
+    getLeavesOfType: (type: string) => never[];
+    getRightLeaf: (split: boolean) => null;
+    revealLeaf: (leaf: never) => void;
+  };
+}
+
+interface MockManifest {
+  id: string;
+  name: string;
+  version: string;
+}
+
 describe('FlipClockPlugin', () => {
   let plugin: FlipClockPlugin;
+  const mockApp: MockApp = {
+    workspace: {
+      getLeavesOfType: () => [],
+      getRightLeaf: () => null,
+      revealLeaf: () => {},
+    },
+  };
+  const mockManifest: MockManifest = {
+    id: 'test-plugin',
+    name: 'Test Plugin',
+    version: '1.0.0',
+  };
 
   beforeEach(() => {
-    plugin = new FlipClockPlugin({} as any, {} as any);
+    plugin = new FlipClockPlugin(mockApp as never, mockManifest as never);
   });
 
   describe('DEFAULT_SETTINGS', () => {

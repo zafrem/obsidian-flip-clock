@@ -1,5 +1,5 @@
 // Setup global mocks for browser APIs
-global.AudioContext = jest.fn().mockImplementation(() => ({
+globalThis.AudioContext = jest.fn().mockImplementation(() => ({
   createOscillator: jest.fn(() => ({
     connect: jest.fn(),
     start: jest.fn(),
@@ -43,15 +43,15 @@ global.AudioContext = jest.fn().mockImplementation(() => ({
 }));
 
 // Mock ResizeObserver
-global.ResizeObserver = jest.fn().mockImplementation(() => ({
+globalThis.ResizeObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),
   unobserve: jest.fn(),
   disconnect: jest.fn(),
 }));
 
 // Mock setInterval and clearInterval
-global.setInterval = jest.fn((callback, delay) => {
+globalThis.setInterval = jest.fn((callback, delay) => {
   return 123; // Return a mock timer ID
 });
 
-global.clearInterval = jest.fn();
+globalThis.clearInterval = jest.fn();

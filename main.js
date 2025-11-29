@@ -41,7 +41,7 @@ var AudioManager = class {
   }
   initializeAudioContext() {
     try {
-      if (typeof globalThis.window !== "undefined" && (globalThis.AudioContext || globalThis.webkitAudioContext)) {
+      if (globalThis.window !== void 0 && (globalThis.AudioContext || globalThis.webkitAudioContext)) {
         this.audioContext = new (globalThis.AudioContext || globalThis.webkitAudioContext)();
       }
     } catch (e) {
@@ -247,9 +247,8 @@ var FlipClockPlugin = class extends import_obsidian.Plugin {
     }
   }
   setupFloatingClock() {
-    if (!this.floatingClockEl) {
-      this.floatingClockEl = document.body.createDiv("flip-clock-floating");
-    }
+    var _a;
+    (_a = this.floatingClockEl) != null ? _a : this.floatingClockEl = document.body.createDiv("flip-clock-floating");
     if (!this.floatingClock) {
       this.floatingClock = new FloatingClock(this.floatingClockEl, this);
       this.floatingClock.start();
@@ -457,9 +456,8 @@ var FloatingClock = class {
     this.plugin.saveSettings();
   }
   start() {
-    if (this.intervalId === null) {
-      this.intervalId = globalThis.setInterval(() => this.updateTime(), 1e3);
-    }
+    var _a;
+    (_a = this.intervalId) != null ? _a : this.intervalId = globalThis.setInterval(() => this.updateTime(), 1e3);
   }
   stop() {
     if (this.intervalId !== null) {
@@ -473,10 +471,12 @@ var FloatingClock = class {
   updateTime() {
     const now = new Date();
     let hours = now.getHours();
-    if (!this.plugin.settings.use24Hour && hours > 12) {
-      hours -= 12;
-    } else if (!this.plugin.settings.use24Hour && hours === 0) {
-      hours = 12;
+    if (!this.plugin.settings.use24Hour) {
+      if (hours > 12) {
+        hours -= 12;
+      } else if (hours === 0) {
+        hours = 12;
+      }
     }
     const minutes = now.getMinutes();
     const seconds = now.getSeconds();
@@ -508,28 +508,28 @@ var FloatingClock = class {
         bottom.textContent = newValue;
         return;
       }
-      if (currentValue !== newValue) {
-        if (this.plugin.settings.animationEnabled && !this.plugin.settings.reduceMotion && currentValue !== "" && currentValue !== null) {
-          flipTop.textContent = currentValue;
-          flipBottom.textContent = newValue;
-          const card = digitEl.querySelector(".flip-card-mini");
-          card == null ? void 0 : card.classList.add("flipping");
-          setTimeout(() => {
-            bottom.textContent = newValue;
-          }, 300);
-          setTimeout(() => {
-            top.textContent = newValue;
-            card == null ? void 0 : card.classList.remove("flipping");
-          }, 600);
-        } else {
-          top.textContent = newValue;
-          bottom.textContent = newValue;
-        }
-      } else {
+      if (currentValue === newValue) {
         if (!top.textContent || !bottom.textContent) {
           top.textContent = newValue;
           bottom.textContent = newValue;
         }
+        return;
+      }
+      if (this.plugin.settings.animationEnabled && !this.plugin.settings.reduceMotion && currentValue && currentValue !== null) {
+        flipTop.textContent = currentValue;
+        flipBottom.textContent = newValue;
+        const card = digitEl.querySelector(".flip-card-mini");
+        card == null ? void 0 : card.classList.add("flipping");
+        setTimeout(() => {
+          bottom.textContent = newValue;
+        }, 300);
+        setTimeout(() => {
+          top.textContent = newValue;
+          card == null ? void 0 : card.classList.remove("flipping");
+        }, 600);
+      } else {
+        top.textContent = newValue;
+        bottom.textContent = newValue;
       }
     }
   }
@@ -547,9 +547,8 @@ var StatusBarClock = class {
     this.updateTime();
   }
   start() {
-    if (this.intervalId === null) {
-      this.intervalId = globalThis.setInterval(() => this.updateTime(), 1e3);
-    }
+    var _a;
+    (_a = this.intervalId) != null ? _a : this.intervalId = globalThis.setInterval(() => this.updateTime(), 1e3);
   }
   stop() {
     if (this.intervalId !== null) {
@@ -560,10 +559,12 @@ var StatusBarClock = class {
   updateTime() {
     const now = new Date();
     let hours = now.getHours();
-    if (!this.plugin.settings.use24Hour && hours > 12) {
-      hours -= 12;
-    } else if (!this.plugin.settings.use24Hour && hours === 0) {
-      hours = 12;
+    if (!this.plugin.settings.use24Hour) {
+      if (hours > 12) {
+        hours -= 12;
+      } else if (hours === 0) {
+        hours = 12;
+      }
     }
     const minutes = now.getMinutes();
     const seconds = now.getSeconds();
@@ -804,10 +805,12 @@ var FlipClockView = class extends import_obsidian.ItemView {
   updateClock() {
     const now = new Date();
     let hours = now.getHours();
-    if (!this.plugin.settings.use24Hour && hours > 12) {
-      hours -= 12;
-    } else if (!this.plugin.settings.use24Hour && hours === 0) {
-      hours = 12;
+    if (!this.plugin.settings.use24Hour) {
+      if (hours > 12) {
+        hours -= 12;
+      } else if (hours === 0) {
+        hours = 12;
+      }
     }
     const minutes = now.getMinutes();
     const seconds = now.getSeconds();
@@ -848,31 +851,31 @@ var FlipClockView = class extends import_obsidian.ItemView {
         bottom.textContent = newValue;
         return;
       }
-      if (currentValue !== newValue) {
-        if (currentValue !== "" && currentValue !== null) {
-          this.playTickSound();
-        }
-        if (this.plugin.settings.animationEnabled && !this.plugin.settings.reduceMotion && currentValue !== "" && currentValue !== null) {
-          flipTop.textContent = currentValue;
-          flipBottom.textContent = newValue;
-          const card = digitEl.querySelector(".flip-card");
-          card == null ? void 0 : card.classList.add("flipping");
-          setTimeout(() => {
-            bottom.textContent = newValue;
-          }, 300);
-          setTimeout(() => {
-            top.textContent = newValue;
-            card == null ? void 0 : card.classList.remove("flipping");
-          }, 600);
-        } else {
-          top.textContent = newValue;
-          bottom.textContent = newValue;
-        }
-      } else {
+      if (currentValue === newValue) {
         if (!top.textContent || !bottom.textContent) {
           top.textContent = newValue;
           bottom.textContent = newValue;
         }
+        return;
+      }
+      if (currentValue && currentValue !== null) {
+        this.playTickSound();
+      }
+      if (this.plugin.settings.animationEnabled && !this.plugin.settings.reduceMotion && currentValue && currentValue !== null) {
+        flipTop.textContent = currentValue;
+        flipBottom.textContent = newValue;
+        const card = digitEl.querySelector(".flip-card");
+        card == null ? void 0 : card.classList.add("flipping");
+        setTimeout(() => {
+          bottom.textContent = newValue;
+        }, 300);
+        setTimeout(() => {
+          top.textContent = newValue;
+          card == null ? void 0 : card.classList.remove("flipping");
+        }, 600);
+      } else {
+        top.textContent = newValue;
+        bottom.textContent = newValue;
       }
     }
   }
@@ -1074,10 +1077,12 @@ var FlipClockEmbedView = class {
   updateClock() {
     const now = new Date();
     let hours = now.getHours();
-    if (!this.settings.use24Hour && hours > 12) {
-      hours -= 12;
-    } else if (!this.settings.use24Hour && hours === 0) {
-      hours = 12;
+    if (!this.settings.use24Hour) {
+      if (hours > 12) {
+        hours -= 12;
+      } else if (hours === 0) {
+        hours = 12;
+      }
     }
     const minutes = now.getMinutes();
     const seconds = now.getSeconds();
@@ -1118,28 +1123,28 @@ var FlipClockEmbedView = class {
         bottom.textContent = newValue;
         return;
       }
-      if (currentValue !== newValue) {
-        if (this.settings.animationEnabled && !this.settings.reduceMotion && currentValue !== "" && currentValue !== null) {
-          flipTop.textContent = currentValue;
-          flipBottom.textContent = newValue;
-          const card = digitEl.querySelector(".flip-card");
-          card == null ? void 0 : card.classList.add("flipping");
-          setTimeout(() => {
-            bottom.textContent = newValue;
-          }, 300);
-          setTimeout(() => {
-            top.textContent = newValue;
-            card == null ? void 0 : card.classList.remove("flipping");
-          }, 600);
-        } else {
-          top.textContent = newValue;
-          bottom.textContent = newValue;
-        }
-      } else {
+      if (currentValue === newValue) {
         if (!top.textContent || !bottom.textContent) {
           top.textContent = newValue;
           bottom.textContent = newValue;
         }
+        return;
+      }
+      if (this.settings.animationEnabled && !this.settings.reduceMotion && currentValue && currentValue !== null) {
+        flipTop.textContent = currentValue;
+        flipBottom.textContent = newValue;
+        const card = digitEl.querySelector(".flip-card");
+        card == null ? void 0 : card.classList.add("flipping");
+        setTimeout(() => {
+          bottom.textContent = newValue;
+        }, 300);
+        setTimeout(() => {
+          top.textContent = newValue;
+          card == null ? void 0 : card.classList.remove("flipping");
+        }, 600);
+      } else {
+        top.textContent = newValue;
+        bottom.textContent = newValue;
       }
     }
   }

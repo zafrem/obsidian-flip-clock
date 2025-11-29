@@ -1,6 +1,20 @@
+interface MockApp {
+  workspace: {
+    getLeavesOfType: (type: string) => WorkspaceLeaf[];
+    getRightLeaf: (split: boolean) => WorkspaceLeaf | null;
+    revealLeaf: (leaf: WorkspaceLeaf) => void;
+  };
+}
+
+interface MockManifest {
+  id: string;
+  name: string;
+  version: string;
+}
+
 export class Plugin {
-  app: any;
-  manifest: any;
+  app: MockApp;
+  manifest: MockManifest;
 
   loadData = jest.fn().mockResolvedValue({});
   saveData = jest.fn().mockResolvedValue(undefined);
@@ -18,32 +32,47 @@ export class Plugin {
   }));
 }
 
+interface MockContainerEl {
+  children: (HTMLElement | null)[];
+  querySelector: jest.MockedFunction<(selector: string) => Element | null>;
+  querySelectorAll: jest.MockedFunction<(selector: string) => NodeListOf<Element>>;
+}
+
 export class ItemView {
-  containerEl: any = {
+  containerEl: MockContainerEl = {
     children: [null, document.createElement('div')],
     querySelector: jest.fn(),
     querySelectorAll: jest.fn(),
   };
-  leaf: any;
-  app: any;
+  leaf: WorkspaceLeaf;
+  app: MockApp;
+}
+
+interface MockSettingContainerEl {
+  empty: jest.MockedFunction<() => void>;
+  createEl: jest.MockedFunction<(tag: string) => HTMLElement>;
+}
+
+interface MockPlugin {
+  settings: Record<string, unknown>;
+  saveSettings: () => Promise<void>;
 }
 
 export class PluginSettingTab {
-  app: any;
-  plugin: any;
-  containerEl: any = {
+  app: MockApp;
+  plugin: MockPlugin;
+  containerEl: MockSettingContainerEl = {
     empty: jest.fn(),
     createEl: jest.fn(() => document.createElement('div')),
   };
 
-  constructor(app: any, plugin: any) {
+  constructor(app: MockApp, plugin: MockPlugin) {
     this.app = app;
     this.plugin = plugin;
   }
 }
 
 export class Setting {
-  constructor(containerEl: any) {}
   setName = jest.fn().mockReturnThis();
   setDesc = jest.fn().mockReturnThis();
   addToggle = jest.fn().mockReturnThis();
@@ -53,5 +82,8 @@ export class Setting {
 }
 
 export interface WorkspaceLeaf {
-  view: any;
+  view: {
+    getViewType: () => string;
+  };
+  setViewState: (state: { type: string; active: boolean }) => Promise<void>;
 }

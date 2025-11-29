@@ -123,9 +123,7 @@ export default class FlipClockPlugin extends Plugin {
 	}
 
 	setupFloatingClock() {
-		if (!this.floatingClockEl) {
-			this.floatingClockEl = document.body.createDiv('flip-clock-floating');
-		}
+		this.floatingClockEl ??= document.body.createDiv('flip-clock-floating');
 		if (!this.floatingClock) {
 			this.floatingClock = new FloatingClock(this.floatingClockEl, this);
 			this.floatingClock.start();
@@ -254,8 +252,8 @@ export default class FlipClockPlugin extends Plugin {
 }
 
 class FloatingClock {
-	private container: HTMLElement;
-	private plugin: FlipClockPlugin;
+	private readonly container: HTMLElement;
+	private readonly plugin: FlipClockPlugin;
 	private clockEl: HTMLElement;
 	private intervalId: ReturnType<typeof setInterval> | null = null;
 	private isDragging = false;
@@ -393,9 +391,7 @@ class FloatingClock {
 	}
 
 	start() {
-		if (this.intervalId === null) {
-			this.intervalId = globalThis.setInterval(() => this.updateTime(), 1000);
-		}
+		this.intervalId ??= globalThis.setInterval(() => this.updateTime(), 1000);
 	}
 
 	stop() {
@@ -413,10 +409,12 @@ class FloatingClock {
 		const now = new Date();
 		let hours = now.getHours();
 
-		if (!this.plugin.settings.use24Hour && hours > 12) {
-			hours -= 12;
-		} else if (!this.plugin.settings.use24Hour && hours === 0) {
-			hours = 12;
+		if (!this.plugin.settings.use24Hour) {
+			if (hours > 12) {
+				hours -= 12;
+			} else if (hours === 0) {
+				hours = 12;
+			}
 		}
 
 		const minutes = now.getMinutes();
@@ -456,39 +454,40 @@ class FloatingClock {
 				return;
 			}
 
-			if (currentValue !== newValue) {
-				if (this.plugin.settings.animationEnabled && !this.plugin.settings.reduceMotion && currentValue !== '' && currentValue !== null) {
-					flipTop.textContent = currentValue;
-					flipBottom.textContent = newValue;
-
-					const card = digitEl.querySelector('.flip-card-mini');
-					card?.classList.add('flipping');
-
-					setTimeout(() => {
-						bottom.textContent = newValue;
-					}, 300);
-
-					setTimeout(() => {
-						top.textContent = newValue;
-						card?.classList.remove('flipping');
-					}, 600);
-				} else {
-					top.textContent = newValue;
-					bottom.textContent = newValue;
-				}
-			} else {
+			if (currentValue === newValue) {
 				if (!top.textContent || !bottom.textContent) {
 					top.textContent = newValue;
 					bottom.textContent = newValue;
 				}
+				return;
+			}
+
+			if (this.plugin.settings.animationEnabled && !this.plugin.settings.reduceMotion && currentValue && currentValue !== null) {
+				flipTop.textContent = currentValue;
+				flipBottom.textContent = newValue;
+
+				const card = digitEl.querySelector('.flip-card-mini');
+				card?.classList.add('flipping');
+
+				setTimeout(() => {
+					bottom.textContent = newValue;
+				}, 300);
+
+				setTimeout(() => {
+					top.textContent = newValue;
+					card?.classList.remove('flipping');
+				}, 600);
+			} else {
+				top.textContent = newValue;
+				bottom.textContent = newValue;
 			}
 		}
 	}
 }
 
 class StatusBarClock {
-	private container: HTMLElement;
-	private plugin: FlipClockPlugin;
+	private readonly container: HTMLElement;
+	private readonly plugin: FlipClockPlugin;
 	private intervalId: ReturnType<typeof setInterval> | null = null;
 
 	constructor(container: HTMLElement, plugin: FlipClockPlugin) {
@@ -504,9 +503,7 @@ class StatusBarClock {
 	}
 
 	start() {
-		if (this.intervalId === null) {
-			this.intervalId = globalThis.setInterval(() => this.updateTime(), 1000);
-		}
+		this.intervalId ??= globalThis.setInterval(() => this.updateTime(), 1000);
 	}
 
 	stop() {
@@ -520,10 +517,12 @@ class StatusBarClock {
 		const now = new Date();
 		let hours = now.getHours();
 
-		if (!this.plugin.settings.use24Hour && hours > 12) {
-			hours -= 12;
-		} else if (!this.plugin.settings.use24Hour && hours === 0) {
-			hours = 12;
+		if (!this.plugin.settings.use24Hour) {
+			if (hours > 12) {
+				hours -= 12;
+			} else if (hours === 0) {
+				hours = 12;
+			}
 		}
 
 		const minutes = now.getMinutes();
@@ -678,7 +677,7 @@ class FlipClockView extends ItemView {
 		const scaleByHeight = (availableHeight * 0.7) / baseDigitHeight; // 70% to leave room for toolbar/controls
 
 		// Use the smaller scale to ensure it fits
-		const scale = Math.min(scaleByWidth, scaleByHeight, 2.0); // Max 2x
+		const scale = Math.min(scaleByWidth, scaleByHeight, 2); // Max 2x
 		const finalScale = Math.max(scale, 0.3); // Min 0.3x
 
 		// Apply scale
@@ -850,10 +849,12 @@ class FlipClockView extends ItemView {
 		const now = new Date();
 		let hours = now.getHours();
 
-		if (!this.plugin.settings.use24Hour && hours > 12) {
-			hours -= 12;
-		} else if (!this.plugin.settings.use24Hour && hours === 0) {
-			hours = 12;
+		if (!this.plugin.settings.use24Hour) {
+			if (hours > 12) {
+				hours -= 12;
+			} else if (hours === 0) {
+				hours = 12;
+			}
 		}
 
 		const minutes = now.getMinutes();
@@ -906,42 +907,43 @@ class FlipClockView extends ItemView {
 				return;
 			}
 
-			if (currentValue !== newValue) {
-				// Play tick sound only if there was a previous value
-				if (currentValue !== '' && currentValue !== null) {
-					this.playTickSound();
-				}
-
-				if (this.plugin.settings.animationEnabled && !this.plugin.settings.reduceMotion && currentValue !== '' && currentValue !== null) {
-					// Set flip cards
-					flipTop.textContent = currentValue;
-					flipBottom.textContent = newValue;
-
-					const card = digitEl.querySelector('.flip-card');
-					card?.classList.add('flipping');
-
-					// Change bottom number when top flip completes (at 300ms)
-					setTimeout(() => {
-						bottom.textContent = newValue;
-					}, 300);
-
-					setTimeout(() => {
-						// Update top to match bottom (which is already showing newValue)
-						top.textContent = newValue;
-						card?.classList.remove('flipping');
-					}, 600);
-				} else {
-					// No animation - immediate update
-					// CRITICAL: Both must be updated together
-					top.textContent = newValue;
-					bottom.textContent = newValue;
-				}
-			} else {
+			if (currentValue === newValue) {
 				// Even if value is the same, ensure both are set correctly
 				if (!top.textContent || !bottom.textContent) {
 					top.textContent = newValue;
 					bottom.textContent = newValue;
 				}
+				return;
+			}
+
+			// Play tick sound only if there was a previous value
+			if (currentValue && currentValue !== null) {
+				this.playTickSound();
+			}
+
+			if (this.plugin.settings.animationEnabled && !this.plugin.settings.reduceMotion && currentValue && currentValue !== null) {
+				// Set flip cards
+				flipTop.textContent = currentValue;
+				flipBottom.textContent = newValue;
+
+				const card = digitEl.querySelector('.flip-card');
+				card?.classList.add('flipping');
+
+				// Change bottom number when top flip completes (at 300ms)
+				setTimeout(() => {
+					bottom.textContent = newValue;
+				}, 300);
+
+				setTimeout(() => {
+					// Update top to match bottom (which is already showing newValue)
+					top.textContent = newValue;
+					card?.classList.remove('flipping');
+				}, 600);
+			} else {
+				// No animation - immediate update
+				// CRITICAL: Both must be updated together
+				top.textContent = newValue;
+				bottom.textContent = newValue;
 			}
 		}
 	}
@@ -1204,10 +1206,12 @@ class FlipClockEmbedView {
 		const now = new Date();
 		let hours = now.getHours();
 
-		if (!this.settings.use24Hour && hours > 12) {
-			hours -= 12;
-		} else if (!this.settings.use24Hour && hours === 0) {
-			hours = 12;
+		if (!this.settings.use24Hour) {
+			if (hours > 12) {
+				hours -= 12;
+			} else if (hours === 0) {
+				hours = 12;
+			}
 		}
 
 		const minutes = now.getMinutes();
@@ -1260,37 +1264,38 @@ class FlipClockEmbedView {
 				return;
 			}
 
-			if (currentValue !== newValue) {
-				if (this.settings.animationEnabled && !this.settings.reduceMotion && currentValue !== '' && currentValue !== null) {
-					// Set flip cards
-					flipTop.textContent = currentValue;
-					flipBottom.textContent = newValue;
-
-					const card = digitEl.querySelector('.flip-card');
-					card?.classList.add('flipping');
-
-					// Change bottom number when top flip completes (at 300ms)
-					setTimeout(() => {
-						bottom.textContent = newValue;
-					}, 300);
-
-					setTimeout(() => {
-						// Update top to match bottom (which is already showing newValue)
-						top.textContent = newValue;
-						card?.classList.remove('flipping');
-					}, 600);
-				} else {
-					// No animation - immediate update
-					// CRITICAL: Both must be updated together
-					top.textContent = newValue;
-					bottom.textContent = newValue;
-				}
-			} else {
+			if (currentValue === newValue) {
 				// Even if value is the same, ensure both are set correctly
 				if (!top.textContent || !bottom.textContent) {
 					top.textContent = newValue;
 					bottom.textContent = newValue;
 				}
+				return;
+			}
+
+			if (this.settings.animationEnabled && !this.settings.reduceMotion && currentValue && currentValue !== null) {
+				// Set flip cards
+				flipTop.textContent = currentValue;
+				flipBottom.textContent = newValue;
+
+				const card = digitEl.querySelector('.flip-card');
+				card?.classList.add('flipping');
+
+				// Change bottom number when top flip completes (at 300ms)
+				setTimeout(() => {
+					bottom.textContent = newValue;
+				}, 300);
+
+				setTimeout(() => {
+					// Update top to match bottom (which is already showing newValue)
+					top.textContent = newValue;
+					card?.classList.remove('flipping');
+				}, 600);
+			} else {
+				// No animation - immediate update
+				// CRITICAL: Both must be updated together
+				top.textContent = newValue;
+				bottom.textContent = newValue;
 			}
 		}
 	}
