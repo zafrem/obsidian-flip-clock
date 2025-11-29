@@ -3,7 +3,7 @@
 A Mac-inspired flip clock plugin for Obsidian with timer functionality. Features beautiful retro flip animations, customizable countdown timers, and optional sound effects.
 
 ## Demo
-[![Demo](./images/demo.jpg)](./image/demo.jpg)
+[![Demo](./images/demo.jpg)](./images/demo.jpg)
 
 ## Features
 
