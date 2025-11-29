@@ -4,7 +4,8 @@
   "version": "0.0.1",
   "minAppVersion": "1.5.0",
   "description": "A flip clock with timer functionality. Features retro flip animations and customizable countdown timers.",
-  "author": "zafrem",
-  "authorUrl": "https://github.com/zafrem/obsidian-flip-clock",
+  "author": "Zafrem",
+	"authorUrl": "https://github.com/zafrem",
+	"fundingUrl": "https://github.com/sponsors/zafrem",
   "isDesktopOnly": false
 }
